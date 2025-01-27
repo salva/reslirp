@@ -11,7 +11,7 @@ CXXFLAGS += $(shell $(PKG_CONFIG) --cflags glib-2.0 slirp)
 
 # Targets
 TARGET = reslirp
-SRC = pktdump.cpp ipdump.cpp moreipdump.cpp appdump.cpp utildump.cpp moreethdump.cpp reslirp.cpp
+SRC = pktdump.cpp ipdump.cpp moreipdump.cpp appdump.cpp utildump.cpp moreethdump.cpp reslirp.cpp main.cpp
 
 all: $(TARGET)
 

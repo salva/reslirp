@@ -5,7 +5,7 @@
 #include "utildump.h"
 #include "pktdump.h"
 
-void dump_lldp(const uint8_t* packet, size_t length, int flags) {
+void dump_lldp(const uint8_t* packet, size_t length, int /* flags */) {
     if (!dump_start("LLDP", length, 2)) return;
 
     size_t offset = 0;
@@ -25,7 +25,7 @@ void dump_lldp(const uint8_t* packet, size_t length, int flags) {
     }
 }
 
-void dump_stp(const uint8_t* packet, size_t length, int flags) {
+void dump_stp(const uint8_t* packet, size_t length, int /* flags */) {
     if (!dump_start("STP", length, 35)) return;
 
     uint16_t protocol_id = ntohs(*reinterpret_cast<const uint16_t*>(&packet[0]));

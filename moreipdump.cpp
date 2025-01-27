@@ -4,7 +4,7 @@
 #include "utildump.h"
 #include "pktdump.h"
 
-void dump_sctp(const uint8_t* packet, size_t length, int flags) {
+void dump_sctp(const uint8_t* packet, size_t length, int /* flags */) {
     if (!dump_start("SCTP", length, 12)) return;
 
     uint16_t src_port = ntohs(*reinterpret_cast<const uint16_t*>(&packet[0]));
@@ -52,7 +52,7 @@ void dump_sctp(const uint8_t* packet, size_t length, int flags) {
     }
 }
 
-void dump_l2tp(const uint8_t* packet, size_t length, int flags) {
+void dump_l2tp(const uint8_t* packet, size_t length, int /* flags */) {
     if (!dump_start("L2TP", length, 6)) return;
 
     uint16_t flags_and_version = ntohs(*reinterpret_cast<const uint16_t*>(&packet[0]));

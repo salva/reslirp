@@ -51,7 +51,7 @@ void dispatch_ethertype(const uint8_t* packet, size_t length, uint16_t ethertype
     }
 }
 
-void dump_arp(const uint8_t* packet, size_t length, int flags) {
+void dump_arp(const uint8_t* packet, size_t length, int /* flags */) {
     if (!dump_start("ARP", length, 28)) return;
 
     uint16_t hw_type = ntohs(*reinterpret_cast<const uint16_t*>(&packet[0]));
@@ -72,7 +72,7 @@ void dump_arp(const uint8_t* packet, size_t length, int flags) {
               << " target_mac:" << target_mac << " target_ip:" << target_ip << std::endl;
 }
 
-void dump_rarp(const uint8_t* packet, size_t length, int flags) {
+void dump_rarp(const uint8_t* packet, size_t length, int /* flags */) {
     if (!dump_start("RARP", length, 28)) return;
 
     uint16_t hw_type = ntohs(*reinterpret_cast<const uint16_t*>(&packet[0]));
