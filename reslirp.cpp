@@ -25,12 +25,14 @@ void init_completed_cb(Slirp *slirp, void *opaque);
 int get_revents_cb(int idx, void *opaque);
 slirp_ssize_t write_stdout_cb(const void *buf, size_t len, void *opaque);
 
-SlirpWrapper::SlirpWrapper(const SlirpConfig &config) {
+SlirpWrapper::SlirpWrapper(const SlirpConfig &config, int debug_level, int dump_level) {
     log_debug("Initializing SlirpWrapper.");
     slirp = slirp_new(&config, &callbacks, this);
     if (!slirp) {
         throw std::runtime_error("Failed to initialize Slirp");
     }
+    this->debug_level = debug_level;
+    this->dump_level = dump_level;
 }
 
 SlirpWrapper::~SlirpWrapper() {
@@ -167,7 +169,7 @@ int SlirpWrapper::add_poll_socket(slirp_os_socket socket, int events) {
 }
 
 void SlirpWrapper::log_debug(const std::string &message) {
-    if (debug_mode) {
+    if (debug_level) {
         std::cerr << "[DEBUG] " << message << std::endl;
     }
 }
