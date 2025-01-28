@@ -25,18 +25,19 @@ void init_completed_cb(Slirp *slirp, void *opaque);
 int get_revents_cb(int idx, void *opaque);
 slirp_ssize_t write_stdout_cb(const void *buf, size_t len, void *opaque);
 
-SlirpWrapper::SlirpWrapper(const SlirpConfig &config, int debug_level, int dump_flags) {
-    log_debug("Initializing SlirpWrapper.");
+SlirpWrapper::SlirpWrapper(const SlirpConfig &config, int log_level, int dump_flags) {
+    log_info("Initializing reSLIRP.");
     slirp = slirp_new(&config, &callbacks, this);
     if (!slirp) {
+        log_error("Failed to initialize Slirp.");
         throw std::runtime_error("Failed to initialize Slirp");
     }
-    this->debug_level = debug_level;
+    this->log_level = log_level;
     this->dump_flags = dump_flags;
 }
 
 SlirpWrapper::~SlirpWrapper() {
-    log_debug("Cleaning up SlirpWrapper.");
+    log_info("Cleaning up reSLIRP.");
     if (slirp) {
         slirp_cleanup(slirp);
     }
@@ -45,25 +46,24 @@ SlirpWrapper::~SlirpWrapper() {
 void SlirpWrapper::run() {
     uint32_t pktin_current = 0;
     uint8_t pktin_buf[9010]; // Jumbo frames
-    log_debug("Starting event loop.");
+
+    log_info("Event loop started.");
     running = true;
 
-    slirp_set_debug(~0);
+    if (log_level > LOG_LIBSLIRP)
+        slirp_set_debug(~0);
 
     while (running) {
         uint32_t timeout = UINT32_MAX;
 
         while (1) {
             if (timers.empty()) {
-                log_debug("No timers.");
                 break;
             } else {
-                log_debug("Checking timers.");
                 std::sort(timers.begin(), timers.end(),
                     [](const TimerData &a, const TimerData &b) { return a.expiration < b.expiration; });
                 uint64_t now = clock_get_ns();
                 if (timers.front().expiration <= now) {
-                    log_debug("Executing timer ID: " + std::to_string(timers.front().id));
                     timers.front().expiration = UINT64_MAX;
                     timers.front().callback(timers.front().opaque);
                 } else {
@@ -77,7 +77,6 @@ void SlirpWrapper::run() {
             }
         }
 
-        log_debug("Updating poll FDs.");
         socket_map.clear();
         pollfds.clear();
 
@@ -88,13 +87,12 @@ void SlirpWrapper::run() {
 
         log_debug("Polling for events, timeout set to " + std::to_string(timeout) + "ms.");
         int ret = poll(pollfds.data(), pollfds.size(), timeout);
-        log_debug("Polling completed. Return value: " + std::to_string(ret));
+        log_debug("Polling completed. Return value: " + std::to_string(ret) + "ret: " + std::to_string(ret));
 
         if (ret < 0) {
-            log_debug("poll returned an error.");
-            perror("poll");
-        } else if (ret > 0) {
-            log_debug("Processing pollfds.");
+            log_debug("Error polling for events.");
+        }
+        else if (ret > 0) {
             slirp_pollfds_poll(slirp, ret < 0, get_revents_cb, this);
 
             if (pollfds[0].revents & POLLIN) {
@@ -102,10 +100,12 @@ void SlirpWrapper::run() {
 
                 if (n < 0) {
                     log_debug("Error reading from STDIN.");
-                } else if (n == 0) {
-                    log_debug("EOF on STDIN.");
+                }
+                else if (n == 0) {
+                    log_error("Connection closed.");
                     running = false;
-                } else {
+                }
+                else {
                     pktin_current += n;
                     log_debug("Read " + std::to_string(n) + " bytes from STDIN, processing packet.");
                     while (1) {
@@ -113,7 +113,7 @@ void SlirpWrapper::run() {
                             break;
                         uint32_t pktin_len = ntohs(*(uint16_t *)(pktin_buf));
                         if (pktin_len > 9000) {
-                            log_debug("Packet too large: " + std::to_string(pktin_len) + ", aborting!");
+                            log_error("Received packet is too large: " + std::to_string(pktin_len) + ", aborting!");
                             pktin_current = 0;
                             running = false;
                             break;
@@ -122,27 +122,24 @@ void SlirpWrapper::run() {
                             break;
                         log_debug("Packet read from STDIN, processing it, len: " + std::to_string(pktin_len));
                         dump_packet("Packet received", pktin_buf + 2, pktin_len, dump_flags);
-                        log_debug("Just before slirp_input");
                         slirp_input(slirp, pktin_buf + 2, pktin_len);
-                        log_debug("Packet processed, removing it from buffer.");
                         if (pktin_current > pktin_len + 2) {
-                            log_debug("Shifting buffer.");
                             std::memcpy(pktin_buf, pktin_buf + pktin_len + 2, pktin_current - pktin_len - 2);
                             pktin_current -= pktin_len + 2;
-                        } else {
+                        }
+                        else {
                             pktin_current = 0;
                         }
                     }
                 }
             }
-        } else {
+        }
+        else {
             log_debug("Timeout occurred.");
-            log_debug("SLIRP connection info: " + std::string(slirp_connection_info(slirp)));
-            log_debug("SLIRP neighbor info: " + std::string(slirp_neighbor_info(slirp)));
         }
     }
 
-    log_debug("Event loop terminated.");
+    log_info("Event loop terminated.");
 }
 
 int add_poll_socket_cb(slirp_os_socket socket, int events, void *opaque) {
@@ -166,12 +163,6 @@ int SlirpWrapper::add_poll_socket(slirp_os_socket socket, int events) {
     socket_map[socket] = ix;
     pollfds.push_back({socket, unix_events, 0});
     return ix;
-}
-
-void SlirpWrapper::log_debug(const std::string &message) {
-    if (debug_level) {
-        std::cerr << "[DEBUG] " << message << std::endl;
-    }
 }
 
 void guest_error_cb(const char *msg, void *opaque) {

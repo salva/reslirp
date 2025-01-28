@@ -17,23 +17,23 @@ void print_help() {
               << "  -h, --vhost            Set the virtual host address\n"
               << "  -D, --dump             Set dump flags (ether, ip, ipv4, ipv6, dhcp, dns)\n"
               << "  -s, --vnameserver      Set the nameserver address\n"
-              << "  -t, --if_mtu           Set interface MTU\n"
-              << "  -r, --if_mru           Set interface MRU\n"
+              << "  -t, --if-mtu           Set interface MTU\n"
+              << "  -r, --if-mru           Set interface MRU\n"
               << "  -d, --debug            Increase debug level (up to 4)\n"
-              << "      --disable_dns      Disable DNS\n"
-              << "      --disable_dhcp     Disable DHCP\n"
+              << "      --disable-dns      Disable DNS\n"
+              << "      --disable-dhcp     Disable DHCP\n"
               << "      --restricted       Enable restricted mode\n"
-              << "      --disable_host_loopback Disable host loopback\n"
-              << "      --enable_emu       Enable emulation\n"
+              << "      --disable-host-loopback Disable host loopback\n"
+              << "      --enable-emu       Enable emulation\n"
               << "      --vhostname        Set virtual hostname\n"
-              << "      --tftp_server_name Set TFTP server name\n"
-              << "      --tftp_path        Set TFTP path\n"
+              << "      --tftp-server-name Set TFTP server name\n"
+              << "      --tftp-path        Set TFTP path\n"
               << "      --bootfile         Set bootfile\n"
               << "      --vnameserver6     Set the IPv6 nameserver address\n"
               << "      --vdnssearch       Set DNS search domains\n"
               << "      --vdomainname      Set domain name\n"
-              << "      --mfr_id           Set manufacturer ID\n"
-              << "      --oob_eth_addr     Set out-of-band Ethernet address\n"
+              << "      --mfr-id           Set manufacturer ID\n"
+              << "      --oob-eth-addr     Set out-of-band Ethernet address\n"
               << "  -?, --help             Print this help message\n";
 }
 
@@ -77,7 +77,7 @@ int parse_dump_flags(const char* flags) {
 
 int main(int argc, char **argv) {
     const char *defaultDnsSearch[] = {nullptr};
-    int debug_level = 0;
+    int log_level = LOG_WARNING;
     int dump_flags = DUMP_NONE;
 
     SlirpConfig config = {
@@ -116,26 +116,27 @@ int main(int argc, char **argv) {
         {"vnetwork", required_argument, nullptr, 'n'},
         {"vnetmask", required_argument, nullptr, 'm'},
         {"vhost", required_argument, nullptr, 'h'},
-        {"vdhcp_start", required_argument, nullptr, 'D'},
+        {"vdhcp-start", required_argument, nullptr, 'D'},
         {"vnameserver", required_argument, nullptr, 's'},
         {"dump", required_argument, nullptr, 'D'},
-        {"if_mtu", required_argument, nullptr, 't'},
-        {"if_mru", required_argument, nullptr, 'r'},
+        {"if-mtu", required_argument, nullptr, 't'},
+        {"if-mru", required_argument, nullptr, 'r'},
         {"debug", no_argument, nullptr, 'd'},
-        {"disable_dns", no_argument, nullptr, 1},
-        {"disable_dhcp", no_argument, nullptr, 2},
+        {"disable-dns", no_argument, nullptr, 1},
+        {"disable-dhcp", no_argument, nullptr, 2},
         {"restricted", no_argument, nullptr, 3},
-        {"disable_host_loopback", no_argument, nullptr, 4},
-        {"enable_emu", no_argument, nullptr, 5},
+        {"disable-host-loopback", no_argument, nullptr, 4},
+        {"enable-emu", no_argument, nullptr, 5},
         {"vhostname", required_argument, nullptr, 6},
-        {"tftp_server_name", required_argument, nullptr, 7},
-        {"tftp_path", required_argument, nullptr, 8},
+        {"tftp-server-name", required_argument, nullptr, 7},
+        {"tftp-path", required_argument, nullptr, 8},
         {"bootfile", required_argument, nullptr, 9},
         {"vnameserver6", required_argument, nullptr, 10},
         {"vdnssearch", required_argument, nullptr, 11},
         {"vdomainname", required_argument, nullptr, 12},
-        {"mfr_id", required_argument, nullptr, 13},
-        {"oob_eth_addr", required_argument, nullptr, 14},
+        {"mfr-id", required_argument, nullptr, 13},
+        {"oob-eth-addr", required_argument, nullptr, 14},
+        {"quiet",no_argument, nullptr, 'q'},
         {"help", no_argument, nullptr, '?'},
         {0, 0, 0, 0}
     };
@@ -167,8 +168,16 @@ int main(int argc, char **argv) {
                 config.if_mru = std::atoi(optarg);
                 break;
             case 'd':
-                if (debug_level < 4) {
-                    ++debug_level;
+                if (log_level < LOG_DEBUG) {
+                    ++log_level;
+                }
+                break;
+            case 'q':
+                if (log_level > LOG_WARNING) {
+                    log_level -= LOG_WARNING;
+                }
+                else {
+                    log_level = 0;
                 }
                 break;
             case '?':
@@ -225,11 +234,11 @@ int main(int argc, char **argv) {
         }
     }
 
-    std::cout << "Debug level set to " << debug_level << std::endl;
+    std::cout << "Debug level set to " << log_level << std::endl;
     std::cout << "Dump mode set to " << dump_flags << std::endl;
 
     try {
-        SlirpWrapper wrapper(config, debug_level, dump_flags);
+        SlirpWrapper wrapper(config, log_level, dump_flags);
         std::cout << "Starting event loop" << std::endl;
         wrapper.run();
         std::cout << "Exiting" << std::endl;

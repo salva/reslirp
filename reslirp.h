@@ -7,9 +7,20 @@
 #include <atomic>
 #include <poll.h>
 #include <libslirp.h>
+#include <iostream>
 
 using Clock = std::chrono::steady_clock;
 using TimerID = uint64_t;
+
+enum {
+    LOG_NONE = 0,
+    LOG_ERROR = 1,
+    LOG_WARNING = 2,
+    LOG_INFO = 3,
+    LOG_DEBUG = 4,
+    LOG_LIBSLIRP = 5,
+    LOG_TRACE = 6,
+};
 
 class SlirpWrapper {
 public:
@@ -18,7 +29,7 @@ public:
     void run();
 
 private:
-    bool debug_level;
+    int32_t log_level;
     uint32_t dump_flags;
     Slirp *slirp;
     std::atomic<TimerID> next_timer_id;
@@ -37,7 +48,23 @@ private:
     std::vector<TimerData> timers;
 
     int add_poll_socket(slirp_os_socket socket, int events);
-    void log_debug(const std::string &message);
+    void inline log_message(int level, const std::string &message) {
+        if (level <= log_level) {
+            std::cerr << message << std::endl;
+        }
+    }
+    void inline log_debug(const std::string &message) {
+        log_message(LOG_DEBUG, message);
+    }
+    void inline log_info(const std::string &message) {
+        log_message(LOG_INFO, message);
+    }
+    void inline log_warning(const std::string &message) {
+        log_message(LOG_WARNING, message);
+    }
+    void inline log_error(const std::string &message) {
+        log_message(LOG_ERROR, message);
+    }
     void *timer_new(SlirpTimerCb cb, void *cb_opaque);
     void timer_free(TimerID timer_id);
     void timer_mod(TimerID timer_id, int64_t expire_time_ns);

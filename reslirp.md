@@ -26,32 +26,36 @@ In most cases, running `reSLIRP` without any options will suffice for general us
 
 ## Options
 
-- `-n, --vnetwork`: Set the virtual network address.
-- `-m, --vnetmask`: Set the virtual network mask.
-- `-h, --vhost`: Set the virtual host address.
-- `-D, --dump`: Set dump flags. Modes include `ether`, `ip`, `ipv4`, `ipv6`, `dhcp`, and `dns`.
-- `-s, --vnameserver`: Set the nameserver address.
-- `-t, --if_mtu`: Define the interface MTU.
-- `-r, --if_mru`: Define the interface MRU.
-- `-d, --debug`: Increase the debug level. Valid levels range from 0 to 4.
-- `--disable_dns`: Disable the DNS feature.
-- `--disable_dhcp`: Disable the DHCP feature.
-- `--restricted`: Enable restricted mode for enhanced security.
-- `--disable_host_loopback`: Disable host loopback for network traffic.
-- `--enable_emu`: Enable emulation settings.
-- `--vhostname`: Define the virtual hostname.
-- `--tftp_server_name`: Define the TFTP server name.
-- `--tftp_path`: Set the TFTP directory path.
-- `--bootfile`: Define the bootfile location.
-- `--vnameserver6`: Set the IPv6-compatible nameserver address.
-- `--vdnssearch`: Set DNS search domains.
-- `--vdomainname`: Define the domain name.
-- `--mfr_id`: Set the manufacturer ID.
-- `--oob_eth_addr`: Define the out-of-band Ethernet address.
-- `-?, --help`: Print this help message for usage information.
-
-## Example
-
+- `-n, --vnetwork`: Specifies the base address of the virtual network you want to configure. This typically sets the range of IPs available in the network.
+- `-m, --vnetmask`: Sets the subnet mask of the virtual network. This determines the size of the subnet and aids in defining network boundaries within your IP range.
+- `-h, --vhost`: Assigns a specific IP address to the virtual host within the network. This is the primary IP used for network operations.
+- `-s, --vnameserver`: Assigns the IP address of the DNS server that the virtual network should use for resolving domain names.
+- `-t, --if-mtu`: Configures the Maximum Transmission Unit (MTU) for the network interface, which defines the largest packet size that can be transmitted.
+- `-r, --if-mru`: Sets the Maximum Receive Unit (MRU) for the network interface, impacting the size of incoming packet processing.
+- `--disable-dns`: Turns off DNS services within the network, which might be necessary for security or performance reasons.
+- `--disable-dhcp`: Deactivates DHCP, requiring manual IP configuration within the network.
+- `--restricted`: Activates restricted mode to enhance security by limiting network operations.
+- `--disable-host-loopback`: Prevents network traffic from looping back to the host, which can be useful for isolating network segments.
+- `--enable-emu`: Turns on network emulation settings for simulating specific network conditions.
+- `--vhostname`: Sets the hostname for the virtual environment, useful for identifying the host in the network.
+- `--tftp-server-name`: Defines the name of the TFTP server, which can be used for file transfers.
+- `--tftp-path`: Determines the file path for the TFTP directory, specifying where to store or access files.
+- `--bootfile`: Sets the location of the bootfile, which the system uses during network boot operations.
+- `--vnameserver6`: Configures an IPv6 DNS server address for resolving domain names in IPv6 networks.
+- `--vdnssearch`: Defines a list of DNS search domains, aiding in domain name resolution by appending these domains when searching for hosts.
+- `--vdomainname`: Sets the domain name for the virtual environment, used to distinguish or categorize networks.
+- `--mfr-id`: Specifies an identifier for the manufacturer, often used for inventory or tracking purposes.
+- `--oob-eth-addr`: Defines an out-of-band Ethernet address, used for managing the network independent of the operating traffic system.
+- `-d, --debug`: Increases verbosity of debug logging. The accepted levels range from 0 (no debug information) to 4 (most detailed debug output).
+- `-D, --dump`: Enables different dump modes for monitoring and logging network traffic. Options include:
+  - `ether`: To log Ethernet layer traffic,
+  - `ip`: For Internet Protocol traffic,
+  - `ipv4`: Specific to IPv4 traffic,
+  - `ipv6`: Specific to IPv6 traffic,
+  - `dhcp`: For Dynamic Host Configuration Protocol traffic,
+  - `dns`: To log Domain Name System traffic.
+- `-q, --quiet`: Silences reslirp. Even warnings and errors.
+- `-?, --help`: Displays detailed information about the command usage and all available options, useful for users seeking guidance on usage.## Example
 ```bash
 reslirp --vnetwork 10.0.2.0 --vnetmask 255.255.255.0 \
         --vhost 10.0.2.2 --vnameserver 10.0.2.3 \
