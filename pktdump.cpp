@@ -34,67 +34,77 @@ std::string get_ethertype_name(uint16_t ethertype) {
 }
 
 void dispatch_ethertype(const uint8_t* packet, size_t length, uint16_t ethertype, int flags) {
-    if (ethertype == 0x0800) {
-        dump_ip(packet, length, flags);
-    } else if (ethertype == 0x86DD) {
-        dump_ip6(packet, length, flags);
-    } else if (ethertype == 0x0806) {
-        dump_arp(packet, length, flags);
-    } else if (ethertype == 0x8035) {
-        dump_rarp(packet, length, flags);
-    } else if (ethertype == 0x88CC) {
-        dump_lldp(packet, length, flags);
-    } else if (ethertype == 0x8809) {
-        dump_stp(packet, length, flags);
-    } else if (ethertype == 0x8100) {
-        dump_vlan_tagging(packet, length, flags);
+    switch (ethertype) {
+        case 0x0800:
+            return dump_ip(packet, length, flags);
+        case 0x86DD:
+            return dump_ip6(packet, length, flags);
+        case 0x0806:
+            return dump_arp(packet, length, flags);
+        case 0x8035:
+            return dump_rarp(packet, length, flags);
+        case 0x88CC:
+            return dump_lldp(packet, length, flags);
+        case 0x8809:
+            return dump_stp(packet, length, flags);
+        case 0x8100:
+            return dump_vlan_tagging(packet, length, flags);
+        default:
+            return;
     }
 }
 
-void dump_arp(const uint8_t* packet, size_t length, int /* flags */) {
-    if (!dump_start("ARP", length, 28)) return;
+void dump_arp(const uint8_t* packet, size_t length, int flags) {
+    bool dump = flags & (DUMP_ETHER | DUMP_IPV4);
+    if (!dump_start("ARP", length, 28, dump)) return;
 
-    uint16_t hw_type = ntohs(*reinterpret_cast<const uint16_t*>(&packet[0]));
-    uint16_t proto_type = ntohs(*reinterpret_cast<const uint16_t*>(&packet[2]));
-    uint8_t hw_size = packet[4];
-    uint8_t proto_size = packet[5];
-    uint16_t opcode = ntohs(*reinterpret_cast<const uint16_t*>(&packet[6]));
+    if (dump) {
+        uint16_t hw_type = ntohs(*reinterpret_cast<const uint16_t*>(&packet[0]));
+        uint16_t proto_type = ntohs(*reinterpret_cast<const uint16_t*>(&packet[2]));
+        uint8_t hw_size = packet[4];
+        uint8_t proto_size = packet[5];
+        uint16_t opcode = ntohs(*reinterpret_cast<const uint16_t*>(&packet[6]));
 
-    std::string sender_mac = format_mac_address(&packet[8]);
-    std::string target_mac = format_mac_address(&packet[18]);
-    char sender_ip[INET_ADDRSTRLEN], target_ip[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &packet[14], sender_ip, sizeof(sender_ip));
-    inet_ntop(AF_INET, &packet[24], target_ip, sizeof(target_ip));
+        std::string sender_mac = format_mac_address(&packet[8]);
+        std::string target_mac = format_mac_address(&packet[18]);
+        char sender_ip[INET_ADDRSTRLEN], target_ip[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, &packet[14], sender_ip, sizeof(sender_ip));
+        inet_ntop(AF_INET, &packet[24], target_ip, sizeof(target_ip));
 
-    std::cerr << "hw_type:" << hw_type << " proto_type:0x" << std::hex << proto_type << std::dec
-              << " hw_size:" << static_cast<int>(hw_size) << " proto_size:" << static_cast<int>(proto_size)
-              << " opcode:" << opcode << " sender_mac:" << sender_mac << " sender_ip:" << sender_ip
-              << " target_mac:" << target_mac << " target_ip:" << target_ip << std::endl;
+        std::cerr << "hw_type:" << hw_type << " proto_type:0x" << std::hex << proto_type << std::dec
+                  << " hw_size:" << static_cast<int>(hw_size) << " proto_size:" << static_cast<int>(proto_size)
+                  << " opcode:" << opcode << " sender_mac:" << sender_mac << " sender_ip:" << sender_ip
+                  << " target_mac:" << target_mac << " target_ip:" << target_ip << std::endl;
+    }
 }
 
-void dump_rarp(const uint8_t* packet, size_t length, int /* flags */) {
-    if (!dump_start("RARP", length, 28)) return;
+void dump_rarp(const uint8_t* packet, size_t length, int flags) {
+    bool dump = flags & (DUMP_ETHER | DUMP_IPV4);
+    if (!dump_start("RARP", length, 28, dump)) return;
 
-    uint16_t hw_type = ntohs(*reinterpret_cast<const uint16_t*>(&packet[0]));
-    uint16_t proto_type = ntohs(*reinterpret_cast<const uint16_t*>(&packet[2]));
-    uint8_t hw_size = packet[4];
-    uint8_t proto_size = packet[5];
-    uint16_t opcode = ntohs(*reinterpret_cast<const uint16_t*>(&packet[6]));
+    if (dump) {
+        uint16_t hw_type = ntohs(*reinterpret_cast<const uint16_t*>(&packet[0]));
+        uint16_t proto_type = ntohs(*reinterpret_cast<const uint16_t*>(&packet[2]));
+        uint8_t hw_size = packet[4];
+        uint8_t proto_size = packet[5];
+        uint16_t opcode = ntohs(*reinterpret_cast<const uint16_t*>(&packet[6]));
 
-    std::string sender_mac = format_mac_address(&packet[8]);
-    std::string target_mac = format_mac_address(&packet[18]);
-    char sender_ip[INET_ADDRSTRLEN], target_ip[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &packet[14], sender_ip, sizeof(sender_ip));
-    inet_ntop(AF_INET, &packet[24], target_ip, sizeof(target_ip));
+        std::string sender_mac = format_mac_address(&packet[8]);
+        std::string target_mac = format_mac_address(&packet[18]);
+        char sender_ip[INET_ADDRSTRLEN], target_ip[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, &packet[14], sender_ip, sizeof(sender_ip));
+        inet_ntop(AF_INET, &packet[24], target_ip, sizeof(target_ip));
 
-    std::cerr << "hw_type:" << hw_type << " proto_type:0x" << std::hex << proto_type << std::dec
-              << " hw_size:" << static_cast<int>(hw_size) << " proto_size:" << static_cast<int>(proto_size)
-              << " opcode:" << opcode << " sender_mac:" << sender_mac << " sender_ip:" << sender_ip
-              << " target_mac:" << target_mac << " target_ip:" << target_ip << std::endl;
+        std::cerr << "hw_type:" << hw_type << " proto_type:0x" << std::hex << proto_type << std::dec
+                  << " hw_size:" << static_cast<int>(hw_size) << " proto_size:" << static_cast<int>(proto_size)
+                  << " opcode:" << opcode << " sender_mac:" << sender_mac << " sender_ip:" << sender_ip
+                  << " target_mac:" << target_mac << " target_ip:" << target_ip << std::endl;
+    }
 }
 
 void dump_vlan_tagging(const uint8_t* packet, size_t length, int flags) {
-    if (!dump_start("VLAN", length, 4)) return;
+    bool dump = flags & DUMP_ETHER;
+    if (!dump_start("VLAN", length, 4, dump)) return;
 
     uint16_t tci = ntohs(*reinterpret_cast<const uint16_t*>(&packet[0]));
     uint16_t pcp = (tci >> 13) & 0x07; // Priority Code Point
@@ -102,23 +112,24 @@ void dump_vlan_tagging(const uint8_t* packet, size_t length, int flags) {
     uint16_t vid = tci & 0x0FFF;       // VLAN Identifier
     uint16_t ethertype = ntohs(*reinterpret_cast<const uint16_t*>(&packet[2]));
 
-    std::cerr << "tci:0x" << std::hex << tci << std::dec
-              << " pcp:" << pcp << " dei:" << dei << " vid:" << vid
-              << " ethertype:0x" << std::hex << ethertype
-              << " (" << get_ethertype_name(ethertype) << ")" << std::dec << std::endl;
+    if (dump)
+        std::cerr << "tci:0x" << std::hex << tci << std::dec
+                  << " pcp:" << pcp << " dei:" << dei << " vid:" << vid
+                  << " ethertype:0x" << std::hex << ethertype
+                  << " (" << get_ethertype_name(ethertype) << ")" << std::dec << std::endl;
 
     dispatch_ethertype(packet + 4, length - 4, ethertype, flags);
 }
 
 void dump_ethernet(const uint8_t* packet, size_t length, int flags) {
-    if (!dump_start("ETH", length, 14)) return;
+    bool dump = flags & DUMP_ETHER;
+    if (!dump_start("ETH", length, 14, dump)) return;
 
     std::string dst_mac = format_mac_address(&packet[0]);
     std::string src_mac = format_mac_address(&packet[6]);
     uint16_t ethertype = ntohs(*reinterpret_cast<const uint16_t*>(&packet[12]));
-
-    std::cerr << "dst:" << dst_mac << " src:" << src_mac << " type:0x" << std::hex << ethertype
-              << " (" << get_ethertype_name(ethertype) << ")" << std::dec << std::endl;
-
+    if (dump)
+        std::cerr << "dst:" << dst_mac << " src:" << src_mac << " type:0x" << std::hex << ethertype
+                  << " (" << get_ethertype_name(ethertype) << ")" << std::dec << std::endl;
     dispatch_ethertype(packet + 14, length - 14, ethertype, flags);
 }

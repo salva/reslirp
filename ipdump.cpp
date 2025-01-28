@@ -82,76 +82,90 @@ void dispatch_protocol(const uint8_t* packet, size_t length, int protocol, int f
 }
 
 void dump_ip(const uint8_t* packet, size_t length, int flags) {
-    if (!dump_start("IPv4", length, 20)) return;
+    bool dump = flags & DUMP_IPV4;
+    if (!dump_start("IPv4", length, 20, dump)) return;
 
     uint8_t version_and_ihl = packet[0];
     uint8_t version = (version_and_ihl >> 4) & 0xF;
     uint8_t ihl = version_and_ihl & 0xF;
-
-    uint16_t total_length = ntohs(*reinterpret_cast<const uint16_t*>(&packet[2]));
-    uint8_t ttl = packet[8];
-    uint8_t protocol = packet[9];
-    uint16_t header_checksum = ntohs(*reinterpret_cast<const uint16_t*>(&packet[10]));
-
-    char src_ip[INET_ADDRSTRLEN], dst_ip[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &packet[12], src_ip, sizeof(src_ip));
-    inet_ntop(AF_INET, &packet[16], dst_ip, sizeof(dst_ip));
-
-    std::cerr << "ver:" << static_cast<int>(version)
-              << " ihl:" << static_cast<int>(ihl * 4)
-              << " tot_len:" << total_length
-              << " ttl:" << static_cast<int>(ttl)
-              << " proto:" << static_cast<int>(protocol)
-              << " (" << protocol_name(protocol) << ") checksum:0x" << std::hex << header_checksum << std::dec
-              << " src:" << src_ip
-              << " dst:" << dst_ip << std::endl;
-
     size_t ip_header_length = ihl * 4;
+    uint8_t protocol = packet[9];
+    uint16_t total_length = ntohs(*reinterpret_cast<const uint16_t*>(&packet[2]));
+    if (dump) {
+        uint8_t ttl = packet[8];
+        uint16_t header_checksum = ntohs(*reinterpret_cast<const uint16_t*>(&packet[10]));
+        char src_ip[INET_ADDRSTRLEN], dst_ip[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, &packet[12], src_ip, sizeof(src_ip));
+        inet_ntop(AF_INET, &packet[16], dst_ip, sizeof(dst_ip));
 
-    if (ip_header_length > length) {
-        std::cerr << "[IPv4 header truncated]" << std::endl;
+        std::cerr << "ver:" << static_cast<int>(version)
+                  << " ihl:" << static_cast<int>(ihl * 4)
+                  << " tot_len:" << total_length
+                  << " ttl:" << static_cast<int>(ttl)
+                  << " proto:" << static_cast<int>(protocol)
+                  << " (" << protocol_name(protocol) << ") checksum:0x" << std::hex << header_checksum << std::dec
+                  << " src:" << src_ip
+                  << " dst:" << dst_ip << std::endl;
+
+
+
+        if (ip_header_length > length) {
+            std::cerr << "[IPv4 header truncated]" << std::endl;
+            return;
+        }
+
+        if (ihl > 5) {
+            std::cerr << "options:";
+            for (size_t i = 20; i < ip_header_length; ++i) {
+                std::cerr << " 0x" << std::hex << static_cast<int>(packet[i]) << std::dec;
+            }
+            std::cerr << std::endl;
+        }
+    }
+
+    if (total_length > length) {
+        if (dump) std::cerr << "[IPv4 payload truncated]" << std::endl;
         return;
     }
 
-    if (ihl > 5) {
-        std::cerr << "options:";
-        for (size_t i = 20; i < ip_header_length; ++i) {
-            std::cerr << " 0x" << std::hex << static_cast<int>(packet[i]) << std::dec;
-        }
-        std::cerr << std::endl;
-    }
-
-    size_t ip_payload_length = total_length - ip_header_length;
-    dispatch_protocol(packet + ip_header_length, ip_payload_length, protocol, flags);
+    dispatch_protocol(packet + ip_header_length, total_length - ip_header_length, protocol, flags & ~DUMP_IPV6);
 }
+
 void dump_ip6(const uint8_t* packet, size_t length, int flags) {
-    if (!dump_start("IPv6", length, 40)) return;
+    bool dump = flags & DUMP_IPV6;
+    if (!dump_start("IPv6", length, 40, dump)) return;
 
     uint8_t version = (packet[0] >> 4) & 0xF;
     uint16_t payload_length = ntohs(*reinterpret_cast<const uint16_t*>(&packet[4]));
     uint8_t next_header = packet[6];
     uint8_t hop_limit = packet[7];
 
-    char src_ip[INET6_ADDRSTRLEN], dst_ip[INET6_ADDRSTRLEN];
-    inet_ntop(AF_INET6, &packet[8], src_ip, sizeof(src_ip));
-    inet_ntop(AF_INET6, &packet[24], dst_ip, sizeof(dst_ip));
+    if (dump) {
+        char src_ip[INET6_ADDRSTRLEN], dst_ip[INET6_ADDRSTRLEN];
+        inet_ntop(AF_INET6, &packet[8], src_ip, sizeof(src_ip));
+        inet_ntop(AF_INET6, &packet[24], dst_ip, sizeof(dst_ip));
 
-    std::cerr << "ver:" << static_cast<int>(version) << " plen:" << payload_length
-              << " nh:" << (int)next_header << " (" << protocol_name(next_header) << ") hlim:" << static_cast<int>(hop_limit)
-              << " src:" << src_ip << " dst:" << dst_ip << std::endl;
+        std::cerr << "ver:" << static_cast<int>(version) << " plen:" << payload_length
+                  << " nh:" << static_cast<int>(next_header) << " (" << protocol_name(next_header) << ") hlim:" << static_cast<int>(hop_limit)
+                  << " src:" << src_ip << " dst:" << dst_ip << std::endl;
+    }
 
-    if ((size_t)(payload_length) + 40 > length) {
-        std::cerr << "[IPv6 payload truncated]" << std::endl;
+    if (static_cast<size_t>(payload_length) + 40 > length) {
+        if (dump) std::cerr << "[IPv6 payload truncated]" << std::endl;
         return;
     }
 
-    size_t offset = 40; // start after the IPv6 header
-    while (next_header == 0 && offset < length) { // handle hop-by-hop options
+    size_t offset = 40; // Start after the IPv6 header
+    while (next_header == 0 && offset < length) { // Handle hop-by-hop options
         if (offset + 8 > length) {
-            std::cerr << "[IPv6 options truncated]" << std::endl;
+            if (dump) std::cerr << "[IPv6 options truncated]" << std::endl;
             return;
         }
-        uint8_t hdr_ext_length = packet[offset + 1]; // length in units of 8 bytes, not including the first 8 bytes
+        uint8_t hdr_ext_length = packet[offset + 1]; // Length in units of 8 bytes, not including the first 8 bytes
+        if (offset + (hdr_ext_length + 1) * 8 > length) {
+            if (dump) std::cerr << "[IPv6 options length exceeds packet size]" << std::endl;
+            return;
+        }
         std::cerr << "[Hop-by-Hop Options: next header " << static_cast<int>(packet[offset])
                   << ", length " << static_cast<int>(hdr_ext_length) << "]" << std::endl;
         next_header = packet[offset];
@@ -159,15 +173,16 @@ void dump_ip6(const uint8_t* packet, size_t length, int flags) {
     }
 
     if (offset >= length) {
-        std::cerr << "[IPv6 packet truncated after options]" << std::endl;
+        if (dump) std::cerr << "[IPv6 packet truncated after options]" << std::endl;
         return;
     }
 
-    dispatch_protocol(packet + offset, length - offset, next_header, flags);
+    dispatch_protocol(packet + offset, length - offset, next_header, flags & ~DUMP_IPV4);
 }
 
-void dump_icmp(const uint8_t* packet, size_t length, int /* flags */) {
-    if (!dump_start("ICMP", length, 8)) return;
+void dump_icmp(const uint8_t* packet, size_t length, int flags) {
+    bool dump = flags & DUMP_IPV4;
+    if (!dump_start("ICMP", length, 8, dump)) return;
 
     uint8_t type = packet[0];
     uint8_t code = packet[1];
@@ -203,17 +218,18 @@ void dump_icmp(const uint8_t* packet, size_t length, int /* flags */) {
     }
 }
 
-void dump_icmpv6(const uint8_t* packet, size_t length, int /* flags */) {
-    if (!dump_start("ICMPv6", length, 8)) return;
+void dump_icmpv6(const uint8_t* packet, size_t length, int flags) {
+    bool dump = flags & DUMP_IPV6;
+    if (!dump_start("ICMPv6", length, 8, dump)) return;
+    if (dump) {
+        uint8_t type = packet[0];
+        uint8_t code = packet[1];
+        uint16_t checksum = ntohs(*reinterpret_cast<const uint16_t*>(&packet[2]));
 
-    uint8_t type = packet[0];
-    uint8_t code = packet[1];
-    uint16_t checksum = ntohs(*reinterpret_cast<const uint16_t*>(&packet[2]));
+        std::cerr << "type:" << static_cast<int>(type) << " (" << icmp_type_name(type, true) << ") "
+                  << "code:" << static_cast<int>(code) << " checksum:0x" << std::hex << checksum << std::dec << std::endl;
 
-    std::cerr << "type:" << static_cast<int>(type) << " (" << icmp_type_name(type, true) << ") "
-              << "code:" << static_cast<int>(code) << " checksum:0x" << std::hex << checksum << std::dec << std::endl;
-
-    switch (type) {
+        switch (type) {
         case 128: // Echo Request
         case 129: // Echo Reply
             if (length >= 8) {
@@ -277,38 +293,42 @@ void dump_icmpv6(const uint8_t* packet, size_t length, int /* flags */) {
         default:
             std::cerr << "    [Unsupported ICMPv6 message type]" << std::endl;
             break;
+        }
     }
 }
 
-void dump_tcp(const uint8_t* packet, size_t length, int /* flags */) {
-    if (!dump_start("TCP", length, 20)) return;
+void dump_tcp(const uint8_t* packet, size_t length, int flags) {
+    bool dump = flags & (DUMP_IPV4 | DUMP_IPV6);
+    if (!dump_start("TCP", length, 20, dump)) return;
+    if (dump) {
+        uint16_t src_port = ntohs(*reinterpret_cast<const uint16_t*>(&packet[0]));
+        uint16_t dst_port = ntohs(*reinterpret_cast<const uint16_t*>(&packet[2]));
+        uint32_t seq_num = ntohl(*reinterpret_cast<const uint32_t*>(&packet[4]));
+        uint32_t ack_num = ntohl(*reinterpret_cast<const uint32_t*>(&packet[8]));
+        uint16_t flags_field = ntohs(*reinterpret_cast<const uint16_t*>(&packet[12])) & 0x3F; // Last 6 bits for flags
 
-    uint16_t src_port = ntohs(*reinterpret_cast<const uint16_t*>(&packet[0]));
-    uint16_t dst_port = ntohs(*reinterpret_cast<const uint16_t*>(&packet[2]));
-    uint32_t seq_num = ntohl(*reinterpret_cast<const uint32_t*>(&packet[4]));
-    uint32_t ack_num = ntohl(*reinterpret_cast<const uint32_t*>(&packet[8]));
-    uint16_t flags_field = ntohs(*reinterpret_cast<const uint16_t*>(&packet[12])) & 0x3F; // Last 6 bits for flags
-
-    std::cerr << "src_port:" << src_port << " dst_port:" << dst_port
-              << " seq:" << seq_num << " ack:" << ack_num
-              << " flags:" << flags_field << " [";
-    if (flags_field & 0x01) std::cerr << "FIN ";
-    if (flags_field & 0x02) std::cerr << "SYN ";
-    if (flags_field & 0x04) std::cerr << "RST ";
-    if (flags_field & 0x08) std::cerr << "PSH ";
-    if (flags_field & 0x10) std::cerr << "ACK ";
-    if (flags_field & 0x20) std::cerr << "URG ";
-    std::cerr << "]" << std::endl;
+        std::cerr << "src_port:" << src_port << " dst_port:" << dst_port
+                  << " seq:" << seq_num << " ack:" << ack_num
+                  << " flags:" << flags_field << " [";
+        if (flags_field & 0x01) std::cerr << "FIN ";
+        if (flags_field & 0x02) std::cerr << "SYN ";
+        if (flags_field & 0x04) std::cerr << "RST ";
+        if (flags_field & 0x08) std::cerr << "PSH ";
+        if (flags_field & 0x10) std::cerr << "ACK ";
+        if (flags_field & 0x20) std::cerr << "URG ";
+        std::cerr << "]" << std::endl;
+    }
 }
 
 void dump_udp(const uint8_t* packet, size_t length, int flags) {
-    if (!dump_start("UDP", length, 8)) return;
-
+    bool dump = flags & (DUMP_IPV4 | DUMP_IPV6);
+    if (!dump_start("UDP", length, 8, dump)) return;
     uint16_t src_port = ntohs(*reinterpret_cast<const uint16_t*>(&packet[0]));
     uint16_t dst_port = ntohs(*reinterpret_cast<const uint16_t*>(&packet[2]));
     uint16_t udp_length = ntohs(*reinterpret_cast<const uint16_t*>(&packet[4]));
 
-    std::cerr << "src_port:" << src_port << " dst_port:" << dst_port << " len:" << udp_length << std::endl;
+    if (dump)
+        std::cerr << "src_port:" << src_port << " dst_port:" << dst_port << " len:" << udp_length << std::endl;
 
     if ((flags & DUMP_DHCP) && (src_port == 67 || src_port == 68 || dst_port == 67 || dst_port == 68)) {
         dump_dhcp(packet + 8, length - 8, flags);

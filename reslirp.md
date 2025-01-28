@@ -1,58 +1,35 @@
 # reSLIRP
 
-reSLIRP is a comprehensive SLIRP implementation built using
-`libslirp`, offering a robust solution for creating and managing
-virtual network configurations.
+**reSLIRP** is a comprehensive implementation of SLIRP built using `libslirp`, offering a robust solution for creating and managing virtual network configurations.
 
-## SLIRP
+## What is SLIRP?
 
-SLIRP is a software utility that enables a virtualized or emulated
-environment to access network services through the host's internet
-connection. Initially developed in the mid-1990s, SLIRP was primarily
-used to provide network services on Unix systems that did not have
-direct access to a network. It acted as a user-mode network stack,
-facilitating the forwarding of TCP/IP traffic from the virtual
-environment to the host network.
+SLIRP originated in the mid-1990s as a solution for Unix systems that lacked direct network access. It was initially designed to provide network services in environments without physical or direct network connections by masquerading TCP/IP traffic, making it appear as if it originated from the host system. This enabled isolated systems to connect seamlessly to external networks.
 
-Today, the idea behind SLIRP remains relevant and useful in various
-situations:
+Over time, SLIRP evolved and found applications in modern computing scenarios. While its original use case was focused on Unix, it has since become a versatile utility commonly employed in various situations:
 
-- **Virtualization and Emulation**: libslirp is commonly used with
-  virtual machine and emulation software (e.g., QEMU, Bochs) to allow
-  guest systems to connect to external networks via the host’s
-  connection without requiring additional network configuration or
-  root privileges on the host system.
+- **Virtualization and Emulation**: `libslirp` is commonly used with virtual machine and emulation software (e.g., QEMU, Bochs) to allow guest systems to connect to external networks via the host’s connection without requiring additional network configuration or root privileges on the host system. This is particularly helpful in scenarios where guest systems are isolated or constrained from accessing host networks directly.
 
-  One very interesting use case for `reslirp` in this context is
-  allowing WSL to connect through VPNs connections initiated in the
-  Windows side, something which is not usually supported/allowed. In
-  general this approach can be used to forward traffic from any host
-  to the one running the VPN.
+- **WSL Integration with VPNs**: One particularly valuable use case for `reSLIRP` is its application with Windows Subsystem for Linux (WSL). WSL typically lacks support for routing traffic through VPN connections initiated on the Windows host. By using `reSLIRP`, traffic from the WSL environment can be masqueraded to seamlessly route through the host's VPN connection. This approach bridges the gap between the Linux subsystem and the Windows network stack, enabling WSL to access resources that are only available through the VPN.
 
-- **Development and Testing**: SLIRP can be beneficial for developers
-  who need to test networked applications on isolated virtual
-  environments. It allows virtualized applications to interact with
-  the internet or a larger network in a controlled manner.
+- **Development and Testing**: SLIRP can be beneficial for developers who need to test networked applications in isolated virtual environments. It allows virtualized applications to interact with the internet or a larger network in a controlled manner.
 
-Overall, SLIRP and its derivates and reimplementations,
-remain versatile tools for facilitating network connectivity in
-virtualized, emulated and other environments, continuing to serve
-various use cases in modern computing.## Usage
+Overall, SLIRP and its derivatives and reimplementations remain versatile tools for facilitating network connectivity in virtualized, emulated, and other environments, continuing to serve various use cases in modern computing.
 
 ## Usage
 
-```shell
+```bash
 reslirp [OPTIONS]
 ```
 
-In most cases, running reSLIRP without any options will suffice for general use.
+In most cases, running `reSLIRP` without any options will suffice for general use.
 
 ## Options
 
 - `-n, --vnetwork`: Set the virtual network address.
 - `-m, --vnetmask`: Set the virtual network mask.
 - `-h, --vhost`: Set the virtual host address.
-- `-D, --dump`: Set dump flags. Modes include ether, ip, ipv4, ipv6, dhcp, and dns.
+- `-D, --dump`: Set dump flags. Modes include `ether`, `ip`, `ipv4`, `ipv6`, `dhcp`, and `dns`.
 - `-s, --vnameserver`: Set the nameserver address.
 - `-t, --if_mtu`: Define the interface MTU.
 - `-r, --if_mru`: Define the interface MRU.
@@ -75,15 +52,13 @@ In most cases, running reSLIRP without any options will suffice for general use.
 
 ## Example
 
-```shell
-reSLIRP --vnetwork 10.0.2.0 --vnetmask 255.255.255.0 \
+```bash
+reslirp --vnetwork 10.0.2.0 --vnetmask 255.255.255.0 \
         --vhost 10.0.2.2 --vnameserver 10.0.2.3 \
         --dump ether,ip --debug --enable_emu
 ```
 
-This example sets up a virtual network with specified addresses,
-enables network packet dumping for specific protocols, activates debug
-information, and turns on emulation mode.
+This example sets up a virtual network with specified addresses, enables network packet dumping for specific protocols, activates debug information, and turns on emulation mode.
 
 ## Features
 
@@ -103,25 +78,26 @@ If you prefer/need other protocol just ask for it!
 
 ### Example: Tunneling a TAP Interface Using dpipe, vde_plug, and SSH
 
-You can tunnel a TAP interface over SSH to a remote machine using the following list of commands as root:
+To tunnel a TAP interface over SSH to a remote machine, run as root:
 
 ```bash
 dpipe vde_plug tap://dev/tap0 = ssh user@remote reslirp &
-ip link set dev <tap-interface-name> up
+ip link set dev tap0 up
 udhcpc -i tap0
 ```
 
-In this command:
+- `vde_plug tap://dev/tap0` connects the local TAP interface (`tap0`)
+  and forwards its data stream to standard input/output.
+- `ssh user@remote reslirp` opens an SSH connection to the remote
+  machine and runs `reslirp`, which provides SLIRP networking on the
+  remote side.
+- `dpipe` links the input/output streams of `vde_plug` and `ssh`,
+  creating the tunnel.
+- `ip link set dev tap0 up` activates the local TAP interface.
+- `udhcpc -i tap0` uses DHCP to assign an IP address to the `tap0` interface.
 
-- `vde_plug tap://dev/tap0` connects the local TAP interface and forwards data to its stdio stream.
-- `ssh user@remote reslirp` initiates an SSH connection to the remote machine and runs reslirp, a tool that provides SLIRP networking for the remote end.
-- `dpipe` connects the stdio streams of the vde_plugin with those of ssh which actually forwards everything to/from the remote slirp process.
-- `ip link set dev tap0 up` brings the specified TAP interface up.
-- `udhcpc -i tap0` requests an IP address for the `tap0` interface using the DHCP client.
+This setup securely tunnels traffic from the local TAP interface to
+the remote machine via SSH, where it is masqueraded by
+`reslirp`. Additional configurations, like setting up routes or DNS
+resolvers, may be required for specific use cases.
 
-This setup ensures that data passing through the TAP interface on your
-local machine is securely tunneled over SSH to the designated host
-where TPC and UDP connections are reinitiated as local connections.
-
-Real life scenarios may require to also set up IP routes and
-configuring the resolver (hosts, DNS).

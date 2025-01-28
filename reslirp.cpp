@@ -25,14 +25,14 @@ void init_completed_cb(Slirp *slirp, void *opaque);
 int get_revents_cb(int idx, void *opaque);
 slirp_ssize_t write_stdout_cb(const void *buf, size_t len, void *opaque);
 
-SlirpWrapper::SlirpWrapper(const SlirpConfig &config, int debug_level, int dump_level) {
+SlirpWrapper::SlirpWrapper(const SlirpConfig &config, int debug_level, int dump_flags) {
     log_debug("Initializing SlirpWrapper.");
     slirp = slirp_new(&config, &callbacks, this);
     if (!slirp) {
         throw std::runtime_error("Failed to initialize Slirp");
     }
     this->debug_level = debug_level;
-    this->dump_level = dump_level;
+    this->dump_flags = dump_flags;
 }
 
 SlirpWrapper::~SlirpWrapper() {
@@ -121,7 +121,7 @@ void SlirpWrapper::run() {
                         if (pktin_current < pktin_len + 2)
                             break;
                         log_debug("Packet read from STDIN, processing it, len: " + std::to_string(pktin_len));
-                        dump_packet("Packet received", pktin_buf + 2, pktin_len, ~0);
+                        dump_packet("Packet received", pktin_buf + 2, pktin_len, dump_flags);
                         log_debug("Just before slirp_input");
                         slirp_input(slirp, pktin_buf + 2, pktin_len);
                         log_debug("Packet processed, removing it from buffer.");
@@ -303,7 +303,7 @@ slirp_ssize_t SlirpWrapper::write_stdout(const void *buf, size_t len) {
         return -1;
     }
 
-    dump_packet("Packet sent", buf, len, ~0);
+    dump_packet("Packet sent", buf, len, dump_flags);
 
     int16_t lennl = htons((int16_t)len);
     slirp_ssize_t r = write_stdout_all(&lennl, sizeof(lennl));
@@ -331,10 +331,10 @@ slirp_ssize_t SlirpWrapper::write_stdout_all(const void *buf, size_t len) {
     return current;
 }
 
-void SlirpWrapper::dump_packet(const char *msg, const void *buf, size_t len, uint32_t dump_mode) {
-    if (dump_mode) {
+void SlirpWrapper::dump_packet(const char *msg, const void *buf, size_t len, uint32_t dump_flags) {
+    if (dump_flags) {
         std::cerr << msg << ":" << std::endl;
-        dump_ethernet((uint8_t *)buf, len, dump_mode);
+        dump_ethernet((uint8_t *)buf, len, dump_flags);
     }
 }
 

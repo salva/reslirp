@@ -8,7 +8,7 @@
 #include "flagsdump.h"
 #include "appdump.h"
 
-bool dump_start(const std::string& layer, size_t length, size_t expected);
+bool dump_start(const std::string& layer, size_t length, size_t expected, bool dump);
 std::string format_mac_address(const uint8_t* mac);
 
 

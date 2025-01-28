@@ -3,42 +3,146 @@
 #include <cstring>
 #include <arpa/inet.h>
 #include <getopt.h>
+#include <set>
+#include <string>
+#include <unordered_map>
 #include "reslirp.h"
+#include "flagsdump.h"
 
-int main(int argc, char** argv) {
+void print_help() {
+    std::cout << "Usage: [OPTIONS]\n"
+              << "Options:\n"
+              << "  -n, --vnetwork         Set the virtual network address\n"
+              << "  -m, --vnetmask         Set the virtual network mask\n"
+              << "  -h, --vhost            Set the virtual host address\n"
+              << "  -D, --dump             Set dump flags (ether, ip, ipv4, ipv6, dhcp, dns)\n"
+              << "  -s, --vnameserver      Set the nameserver address\n"
+              << "  -t, --if_mtu           Set interface MTU\n"
+              << "  -r, --if_mru           Set interface MRU\n"
+              << "  -d, --debug            Increase debug level (up to 4)\n"
+              << "      --disable_dns      Disable DNS\n"
+              << "      --disable_dhcp     Disable DHCP\n"
+              << "      --restricted       Enable restricted mode\n"
+              << "      --disable_host_loopback Disable host loopback\n"
+              << "      --enable_emu       Enable emulation\n"
+              << "      --vhostname        Set virtual hostname\n"
+              << "      --tftp_server_name Set TFTP server name\n"
+              << "      --tftp_path        Set TFTP path\n"
+              << "      --bootfile         Set bootfile\n"
+              << "      --vnameserver6     Set the IPv6 nameserver address\n"
+              << "      --vdnssearch       Set DNS search domains\n"
+              << "      --vdomainname      Set domain name\n"
+              << "      --mfr_id           Set manufacturer ID\n"
+              << "      --oob_eth_addr     Set out-of-band Ethernet address\n"
+              << "  -?, --help             Print this help message\n";
+}
+
+#include <string>
+#include <unordered_map>
+
+#include <string>
+#include <unordered_map>
+
+int parse_dump_flags(const char* flags) {
+    int dump_flags = DUMP_NONE;
+    std::string flagString(flags);
+    size_t start = 0;
+    size_t end;
+
+    std::unordered_map<std::string, int> flagMap = {
+        {"ether", DUMP_ETHER},
+        {"ipv4", DUMP_IPV4},
+        {"ipv6", DUMP_IPV6},
+        {"dhcp", DUMP_DHCP},
+        {"dns", DUMP_DNS},
+        {"ip", DUMP_IPV4 | DUMP_IPV6},
+        {"all", -1}
+    };
+
+    do {
+        end = flagString.find(',', start);
+        std::string flag = flagString.substr(start, end - start);
+        auto it = flagMap.find(flag);
+        if (it != flagMap.end()) {
+            dump_flags |= it->second;
+        }
+        else {
+            std::cerr << "Invalid dump flag: " << flag << std::endl;
+        }
+        start = end + 1;
+    } while (end != std::string::npos);
+
+    return dump_flags;
+}
+
+int main(int argc, char **argv) {
+    const char *defaultDnsSearch[] = {nullptr};
+    int debug_level = 0;
+    int dump_flags = DUMP_NONE;
+
     SlirpConfig config = {
         .version = SLIRP_CONFIG_VERSION_MAX,
         .restricted = 0,
         .in_enabled = true,
-        .vnetwork = { .s_addr = inet_addr("10.0.2.0") },
-        .vnetmask = { .s_addr = inet_addr("255.255.255.0") },
-        .vhost = { .s_addr = inet_addr("10.0.2.2") },
+        .vnetwork = {.s_addr = inet_addr("10.0.2.0")},
+        .vnetmask = {.s_addr = inet_addr("255.255.255.0")},
+        .vhost = {.s_addr = inet_addr("10.0.2.2")},
         .in6_enabled = false,
+        .vprefix_addr6 = IN6ADDR_ANY_INIT,
+        .vprefix_len = 0,
+        .vhost6 = IN6ADDR_ANY_INIT,
         .vhostname = "slirp",
-        .vdhcp_start = { .s_addr = inet_addr("10.0.2.20") },
-        .vnameserver = { .s_addr = inet_addr("10.0.2.3") },
+        .tftp_server_name = nullptr,
+        .tftp_path = nullptr,
+        .bootfile = nullptr,
+        .vdhcp_start = {.s_addr = inet_addr("10.0.2.20")},
+        .vnameserver = {.s_addr = inet_addr("10.0.2.3")},
+        .vnameserver6 = IN6ADDR_ANY_INIT,
+        .vdnssearch = defaultDnsSearch,
+        .vdomainname = nullptr,
         .if_mtu = 1500,
         .if_mru = 1500,
+        .disable_host_loopback = false,
+        .enable_emu = false,
+        .outbound_addr = nullptr,
+        .outbound_addr6 = nullptr,
         .disable_dns = false,
         .disable_dhcp = false,
+        .mfr_id = 0,
+        .oob_eth_addr = {0}
     };
 
     static struct option long_options[] = {
-        {"vnetwork", required_argument, 0, 'n'},
-        {"vnetmask", required_argument, 0, 'm'},
-        {"vhost", required_argument, 0, 'h'},
-        {"vdhcp_start", required_argument, 0, 'd'},
-        {"vnameserver", required_argument, 0, 's'},
-        {"if_mtu", required_argument, 0, 't'},
-        {"if_mru", required_argument, 0, 'r'},
-        {"disable_dns", no_argument, 0, 0},
-        {"disable_dhcp", no_argument, 0, 0},
+        {"vnetwork", required_argument, nullptr, 'n'},
+        {"vnetmask", required_argument, nullptr, 'm'},
+        {"vhost", required_argument, nullptr, 'h'},
+        {"vdhcp_start", required_argument, nullptr, 'D'},
+        {"vnameserver", required_argument, nullptr, 's'},
+        {"dump", required_argument, nullptr, 'D'},
+        {"if_mtu", required_argument, nullptr, 't'},
+        {"if_mru", required_argument, nullptr, 'r'},
+        {"debug", no_argument, nullptr, 'd'},
+        {"disable_dns", no_argument, nullptr, 1},
+        {"disable_dhcp", no_argument, nullptr, 2},
+        {"restricted", no_argument, nullptr, 3},
+        {"disable_host_loopback", no_argument, nullptr, 4},
+        {"enable_emu", no_argument, nullptr, 5},
+        {"vhostname", required_argument, nullptr, 6},
+        {"tftp_server_name", required_argument, nullptr, 7},
+        {"tftp_path", required_argument, nullptr, 8},
+        {"bootfile", required_argument, nullptr, 9},
+        {"vnameserver6", required_argument, nullptr, 10},
+        {"vdnssearch", required_argument, nullptr, 11},
+        {"vdomainname", required_argument, nullptr, 12},
+        {"mfr_id", required_argument, nullptr, 13},
+        {"oob_eth_addr", required_argument, nullptr, 14},
+        {"help", no_argument, nullptr, '?'},
         {0, 0, 0, 0}
     };
 
     int option_index = 0;
     int c;
-    while ((c = getopt_long(argc, argv, "n:m:h:d:s:t:r:", long_options, &option_index)) != -1) {
+    while ((c = getopt_long(argc, argv, "n:m:h:D:s:t:r:d?", long_options, &option_index)) != -1) {
         switch (c) {
             case 'n':
                 config.vnetwork.s_addr = inet_addr(optarg);
@@ -49,9 +153,10 @@ int main(int argc, char** argv) {
             case 'h':
                 config.vhost.s_addr = inet_addr(optarg);
                 break;
-            case 'd':
-                config.vdhcp_start.s_addr = inet_addr(optarg);
+            case 'D': {
+                dump_flags |= parse_dump_flags(optarg);
                 break;
+            }
             case 's':
                 config.vnameserver.s_addr = inet_addr(optarg);
                 break;
@@ -61,21 +166,70 @@ int main(int argc, char** argv) {
             case 'r':
                 config.if_mru = std::atoi(optarg);
                 break;
-            case 0:
-                if (std::string(long_options[option_index].name) == "disable_dns") {
-                    config.disable_dns = true;
-                } else if (std::string(long_options[option_index].name) == "disable_dhcp") {
-                    config.disable_dhcp = true;
+            case 'd':
+                if (debug_level < 4) {
+                    ++debug_level;
                 }
                 break;
+            case '?':
+                print_help();
+                return EXIT_SUCCESS;
+            case 1:
+                config.disable_dns = true;
+                break;
+            case 2:
+                config.disable_dhcp = true;
+                break;
+            case 3:
+                config.restricted = 1;
+                break;
+            case 4:
+                config.disable_host_loopback = true;
+                break;
+            case 5:
+                config.enable_emu = true;
+                break;
+            case 6:
+                config.vhostname = optarg;
+                break;
+            case 7:
+                config.tftp_server_name = optarg;
+                break;
+            case 8:
+                config.tftp_path = optarg;
+                break;
+            case 9:
+                config.bootfile = optarg;
+                break;
+            case 10:
+                inet_pton(AF_INET6, optarg, &config.vnameserver6);
+                break;
+            case 11:
+                config.vdnssearch = new const char*[]{optarg, nullptr};
+                break;
+            case 12:
+                config.vdomainname = optarg;
+                break;
+            case 13:
+                config.mfr_id = std::strtoul(optarg, nullptr, 10);
+                break;
+            case 14:
+                std::sscanf(optarg, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
+                    &config.oob_eth_addr[0], &config.oob_eth_addr[1],
+                    &config.oob_eth_addr[2], &config.oob_eth_addr[3],
+                    &config.oob_eth_addr[4], &config.oob_eth_addr[5]);
+                break;
             default:
-                std::cerr << "Invalid option" << std::endl;
+                std::cerr << "Invalid option. Use --help for usage information." << std::endl;
                 return EXIT_FAILURE;
         }
     }
 
+    std::cout << "Debug level set to " << debug_level << std::endl;
+    std::cout << "Dump mode set to " << dump_flags << std::endl;
+
     try {
-        SlirpWrapper wrapper(config);
+        SlirpWrapper wrapper(config, debug_level, dump_flags);
         std::cout << "Starting event loop" << std::endl;
         wrapper.run();
         std::cout << "Exiting" << std::endl;

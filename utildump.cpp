@@ -5,13 +5,12 @@
 #include "utildump.h"
 
 // Helper function to start layer and check length
-bool dump_start(const std::string& layer, size_t length, size_t expected) {
-    std::cerr << layer << " (" << length;
+bool dump_start(const std::string& layer, size_t length, size_t expected, bool dump) {
     if (length < expected) {
-        std::cerr << " < " << expected << ") packet too short!" << std::endl;
+        if (dump) std::cerr << layer << " (" << length << " < " << expected << ") packet too short!" << std::endl;
         return false;
     }
-    std::cerr << "): ";
+    if (dump) std::cerr << layer << " (" << length << "): ";
     return true;
 }
 

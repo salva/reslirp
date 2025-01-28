@@ -13,13 +13,13 @@ using TimerID = uint64_t;
 
 class SlirpWrapper {
 public:
-    SlirpWrapper(const SlirpConfig &config, int debug_level = 0, int dump_level = 0);
+    SlirpWrapper(const SlirpConfig &config, int debug_level = 0, int dump_flags = 0);
     ~SlirpWrapper();
     void run();
 
 private:
     bool debug_level;
-    uint32_t dump_level;
+    uint32_t dump_flags;
     Slirp *slirp;
     std::atomic<TimerID> next_timer_id;
     bool running;
@@ -48,7 +48,7 @@ private:
     int get_revents(int idx);
     slirp_ssize_t write_stdout(const void *buf, size_t len);
     slirp_ssize_t write_stdout_all(const void *buf, size_t len);
-    void dump_packet(const char *msg, const void *buf, size_t len, uint32_t dump_mode);
+    void dump_packet(const char *msg, const void *buf, size_t len, uint32_t dump_flags);
 
     static SlirpCb callbacks;
 
