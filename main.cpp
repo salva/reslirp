@@ -234,14 +234,12 @@ int main(int argc, char **argv) {
         }
     }
 
-    std::cout << "Debug level set to " << log_level << std::endl;
-    std::cout << "Dump mode set to " << dump_flags << std::endl;
+    // std::cerr << "Debug level set to " << log_level << std::endl;
+    // std::cerr << "Dump mode set to " << dump_flags << std::endl;
 
     try {
         SlirpWrapper wrapper(config, log_level, dump_flags);
-        std::cout << "Starting event loop" << std::endl;
         wrapper.run();
-        std::cout << "Exiting" << std::endl;
     } catch (const std::exception &e) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;
