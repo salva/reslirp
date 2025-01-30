@@ -9,6 +9,8 @@
 #include <libslirp.h>
 #include <iostream>
 
+#include "libslirpcompat.h"
+
 using Clock = std::chrono::steady_clock;
 using TimerID = uint64_t;
 

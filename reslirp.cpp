@@ -341,6 +341,8 @@ SlirpCb SlirpWrapper::callbacks = {
     .notify = notify_cb,
     .init_completed = init_completed_cb,
     .timer_new_opaque = nullptr,
+#if SLIRP_REQUIRE_VERSION > 5
     .register_poll_socket = register_poll_socket_cb,
     .unregister_poll_socket = unregister_poll_socket_cb,
+#endif
 };
