@@ -81,7 +81,7 @@ int main(int argc, char **argv) {
     int dump_flags = DUMP_NONE;
 
     SlirpConfig config = {
-        .version = SLIRP_CONFIG_VERSION_MAX,
+        .version = SLIRP_REQUIRED_VERSION,
         .restricted = 0,
         .in_enabled = true,
         .vnetwork = {.s_addr = inet_addr("10.0.2.0")},
