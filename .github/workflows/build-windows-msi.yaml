@@ -62,13 +62,17 @@ jobs:
           cd build
           make -j$(nproc)
 
-      - name: Install WiX Toolset
+      - name: Install WiX Toolset (latest v5 release)
         run: |
-          choco install wixtoolset --no-progress
+          curl -L -o wix.exe https://github.com/wixtoolset/wix/releases/latest/download/wix.exe
+          mkdir -p C:\wix
+          wix.exe -q -target C:\wix
+          echo "C:\wix" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8
 
       - name: Run Perl script to generate MSI
         shell: msys2 {0}
         run: |
+          export PATH=$PATH:"/c/wix"
           perl scripts/mkmsi.pl  # Adjust path as needed
 
       - name: Find and upload MSI
