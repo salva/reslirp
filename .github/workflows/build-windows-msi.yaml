@@ -24,7 +24,17 @@ jobs:
             mingw-w64-x86_64-make
             mingw-w64-x86_64-pkg-config
             mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-meson
+            mingw-w64-x86_64-ninja
             git
+
+      - name: Clone and build libslirp v4.9.0
+        shell: msys2 {0}
+        run: |
+          git clone --branch v4.9.0 --depth 1 https://gitlab.freedesktop.org/slirp/libslirp.git
+          cd libslirp
+          meson build
+          ninja -C build install
 
       - name: Configure the build with CMake
         shell: msys2 {0}
