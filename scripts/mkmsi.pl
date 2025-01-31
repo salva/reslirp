@@ -6,7 +6,7 @@ use POSIX qw(strftime);
 use XML::FromPerl qw(xml_from_perl);
 
 my $version = 1;
-my $subversion = 0;
+my $subversion = 1;
 my $datetime = strftime "%y%m%d%H%M%S", localtime;
 
 sub clean_id {
@@ -51,26 +51,39 @@ my %win_deps = map {$_ => get_win_path($deps{$_})} keys %deps;
 
 my $wix_structure =
 [ Wix => { xmlns => "http://wixtoolset.org/schemas/v4/wxs" },
-  [ Package => { InstallerVersion => '400',
+  [ Package => { InstallerVersion => '500',
 		 Compressed => "yes",
 		 Name => "reSLIRP",
 		 Manufacturer => "HappyRobotsLTD",
 		 Version => "$version.$subversion.0.0",
-		 UpgradeCode => sprintf("12345678-ABCD-%04d-%04d-%8s", $version, $subversion, $datetime) },
-    [ StandardDirectory => { Id => "ProgramFiles6432Folder" },
+		 UpgradeCode => sprintf("12345678-ABCD-%04d-%04d-%8s", $version, $subversion, $datetime),
+		 Scope => 'perMachine' },
+    [ StandardDirectory => { Id => "ProgramFiles64Folder" },
       [ Directory => { Id => "INSTALLFOLDER", Name => "reSLIRP" },
 	[ Component => { Id => "ProductComponent", Bitness => "always64" },
 	  [ File => { Source => get_win_path("build/reslirp.exe"), Id => "MainExecutable", KeyPath=>"yes"} ],
 	],
-	map [ Component => { Id => $_, Bitness => "always64" },
+	[ Component => { Id => "Readme" },
+	  [ File => { Id => "ReadmeFile", Source => "README.md", Name => "README.txt" } ]
+	],
+	[ Component => { Id => "Copyright" },
+	  [ File => { Id => "CopyrightFile", Source => "COPYRIGHT", Name => "COPYRIGHT.txt" } ]
+	],	
+	[ Component => { Id => "CopyrightSlirp" },
+	  [ File => { Id => "CopyrightSlirpFile", Source => "COPYRIGHT.libslirp", Name => "COPYRIGHT_LIBSLIRP.txt" } ]
+	],
+	map [ Component => { Id => $_, Bitness => 'always64' },
 	      [ File => { Source => $win_deps{$_}, Id => $_, KeyPath => "yes" } ],
 	], keys(%win_deps)
       ]
     ],
     [ Feature => {Id => "reSLIRPFeature"},
       [ ComponentRef => { Id => "ProductComponent" } ],
+      [ ComponentRef => { Id => "Readme" } ],
+      [ ComponentRef => { Id => "Copyright" } ],
+      [ ComponentRef => { Id => "CopyrightSlirp" } ],
       map [ ComponentRef => { Id => $_ }], keys(%win_deps)
-    ]
+    ],
   ]
 ];
 
@@ -87,4 +100,5 @@ chomp($userdir);
 my $out_fn = "reSLIRP-${version}.${subversion}.msi";
 system "$userdir/.dotnet/tools/wix build reslirp.wxs -o reslirp-${version}.${subversion}.msi" and die "wix failed: $?";
 print "$out_fn created";
+
 
