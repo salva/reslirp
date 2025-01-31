@@ -18,15 +18,23 @@ jobs:
       - name: Setup MSYS2
         uses: msys2/setup-msys2@v2
         with:
-          msystem: MINGW64
+          msystem: MSYS
           install: >-
-            mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-make
-            mingw-w64-x86_64-pkg-config
-            mingw-w64-x86_64-cmake
-            mingw-w64-x86_64-meson
-            mingw-w64-x86_64-ninja
+            gcc
+            make
+            pkg-config
+            cmake
+            meson
+            ninja
             git
+            glib2-devel
+            perl
+            perl-XML-LibXML
+
+      - name: Install Perl modules
+        shell: msys2 {0}
+        run: |
+          cpan -i XML::FromPerl
 
       - name: Clone and build libslirp v4.9.0
         shell: msys2 {0}
@@ -41,7 +49,7 @@ jobs:
         run: |
           mkdir -p build
           cd build
-          cmake .. -G "MinGW Makefiles"
+          cmake .. -G "Unix Makefiles"
 
       - name: Compile the application using make
         shell: msys2 {0}
