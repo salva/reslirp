@@ -1,0 +1,61 @@
+name: Build Windows MSI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-make
+            mingw-w64-x86_64-pkg-config
+            mingw-w64-x86_64-cmake
+            git
+
+      - name: Configure the build with CMake
+        shell: msys2 {0}
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. -G "MinGW Makefiles"
+
+      - name: Compile the application using make
+        shell: msys2 {0}
+        run: |
+          cd build
+          make -j$(nproc)
+
+      - name: Install WiX Toolset
+        run: |
+          choco install wixtoolset --no-progress
+
+      - name: Run Perl script to generate MSI
+        shell: msys2 {0}
+        run: |
+          perl scripts/mkmsi.pl  # Adjust path as needed
+
+      - name: Find and upload MSI
+        run: |
+          $msi_file = Get-ChildItem -Path . -Filter "*.msi" -Recurse | Select-Object -ExpandProperty FullName
+          echo "Found MSI: $msi_file"
+          echo "MSI_PATH=$msi_file" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8
+
+      - name: Upload MSI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MSI-Package
+          path: ${{ env.MSI_PATH }}
