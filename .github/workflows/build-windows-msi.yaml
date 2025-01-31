@@ -31,10 +31,15 @@ jobs:
             perl
             perl-XML-LibXML
 
-      - name: Install Perl modules
+      - name: Install XML::FromPerl manually
         shell: msys2 {0}
         run: |
-          cpan -i XML::FromPerl
+          curl -L -o XML-FromPerl.tar.gz https://cpan.metacpan.org/authors/id/S/SA/SALVA/XML-FromPerl-0.01.tar.gz
+          tar -xzf XML-FromPerl.tar.gz
+          cd XML-FromPerl-0.01
+          perl Makefile.PL
+          make
+          make install
 
       - name: Clone and build libslirp v4.9.0
         shell: msys2 {0}
