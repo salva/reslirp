@@ -8,6 +8,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Find dependencies
+set(ENV{PKG_CONFIG_PATH} "/usr/local/lib/pkgconfig")
 find_package(PkgConfig REQUIRED)
 pkg_search_module(GLIB REQUIRED glib-2.0)
 pkg_search_module(SLIRP REQUIRED slirp)
