@@ -67,6 +67,7 @@ my $wix_structure =
 		 Version => "$version.$subversion.0.0",
 		 UpgradeCode => sprintf("12345678-ABCD-%04d-%04d-%8s", $version, $subversion, $datetime),
 		 Scope => 'perMachine' },
+    [ MediaTemplate => { EmbedCab => "yes" } ],
     [ StandardDirectory => { Id => "ProgramFiles64Folder" },
       [ Directory => { Id => "INSTALLFOLDER", Name => "reSLIRP" },
 	[ Component => { Id => "ProductComponent", Bitness => "always64" },
@@ -107,7 +108,7 @@ my $userdir = `cygpath -u \$USERPROFILE`;
 chomp($userdir);
 
 my $out_fn = "reSLIRP-${release}.msi";
-system "$userdir/.dotnet/tools/wix build -arch x64 reslirp.wxs -o $out_fn" and die "wix failed: $?";
+system "$userdir/.dotnet/tools/wix build -bf -arch x64 reslirp.wxs -o $out_fn" and die "wix failed: $?";
 print "$out_fn created";
 
 
