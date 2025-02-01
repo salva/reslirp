@@ -33,7 +33,6 @@ while (<$deps>) {
     chomp;
     s/^\s+|\s+$//g;
     if (my ($lib, $target) = /^\s*(.*?)\s+=>\s+(.*?)\s+\(0x[0-9a-f]+\)\s*$/) {
-	
 	if ($target =~ m|^/c/windows/|i) {
 	    print "Ignoring system dependency $target\n\r";
 	}
