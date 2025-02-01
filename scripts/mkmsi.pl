@@ -5,9 +5,19 @@ use warnings;
 use POSIX qw(strftime);
 use XML::FromPerl qw(xml_from_perl);
 
-my $version = 1;
-my $subversion = 1;
+my $release = shift @ARGV // "outside";
+my ($version, $subversion) = (0, 0);
 my $datetime = strftime "%y%m%d%H%M%S", localtime;
+
+if (defined $release) {
+    if ($release =~ /^v?(\d+)\.(\d+)/i) {
+        $version = $1;
+        $subversion = $2;
+    }
+    else {
+        $release .= "-$datetime";
+    }
+}
 
 sub clean_id {
     my $id = shift;
@@ -67,7 +77,7 @@ my $wix_structure =
 	],
 	[ Component => { Id => "Copyright" },
 	  [ File => { Id => "CopyrightFile", Source => "COPYRIGHT", Name => "COPYRIGHT.txt" } ]
-	],	
+	],
 	[ Component => { Id => "CopyrightSlirp" },
 	  [ File => { Id => "CopyrightSlirpFile", Source => "COPYRIGHT.libslirp", Name => "COPYRIGHT_LIBSLIRP.txt" } ]
 	],
@@ -96,8 +106,8 @@ print "WiX XML file 'reslirp.wxs' generated successfully!\n";
 my $userdir = `cygpath -u \$USERPROFILE`;
 chomp($userdir);
 
-my $out_fn = "reSLIRP-${version}.${subversion}.msi";
-system "$userdir/.dotnet/tools/wix build -arch x64 reslirp.wxs -o reslirp-${version}.${subversion}.msi" and die "wix failed: $?";
+my $out_fn = "reSLIRP-${release}.msi";
+system "$userdir/.dotnet/tools/wix build -arch x64 reslirp.wxs -o $out_fn" and die "wix failed: $?";
 print "$out_fn created";
 
 
