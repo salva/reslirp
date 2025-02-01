@@ -98,7 +98,7 @@ my $userdir = `cygpath -u \$USERPROFILE`;
 chomp($userdir);
 
 my $out_fn = "reSLIRP-${version}.${subversion}.msi";
-system "$userdir/.dotnet/tools/wix build reslirp.wxs -o reslirp-${version}.${subversion}.msi" and die "wix failed: $?";
+system "$userdir/.dotnet/tools/wix build -arch x64 reslirp.wxs -o reslirp-${version}.${subversion}.msi" and die "wix failed: $?";
 print "$out_fn created";
 
 
