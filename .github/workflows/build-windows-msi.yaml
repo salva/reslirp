@@ -5,6 +5,9 @@ on:
     branches:
       - master
   pull_request:
+  release:
+    types:
+      - created
   workflow_dispatch:
 
 jobs:
@@ -71,7 +74,7 @@ jobs:
         shell: msys2 {0}
         run: |
           export PATH=$PATH:"/c/wix"
-          perl scripts/mkmsi.pl  # Adjust path as needed
+          perl scripts/mkmsi.pl ${{ github.ref_name }}  # Adjust path as needed
 
       - name: Find and upload MSI
         run: |
