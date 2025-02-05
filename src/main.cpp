@@ -6,6 +6,8 @@
 #include <set>
 #include <string>
 #include <unordered_map>
+#include <netdb.h>
+#include <unistd.h>
 #include "reslirp.h"
 #include "flagsdump.h"
 
@@ -34,14 +36,9 @@ void print_help() {
               << "      --vdomainname      Set domain name\n"
               << "      --mfr-id           Set manufacturer ID\n"
               << "      --oob-eth-addr     Set out-of-band Ethernet address\n"
+              << "      --reverse          Connect to the specified host:port for tunneling\n"
               << "  -?, --help             Print this help message\n";
 }
-
-#include <string>
-#include <unordered_map>
-
-#include <string>
-#include <unordered_map>
 
 int parse_dump_flags(const char* flags) {
     int dump_flags = DUMP_NONE;
@@ -75,10 +72,40 @@ int parse_dump_flags(const char* flags) {
     return dump_flags;
 }
 
+int connect_to_host(const std::string &host, int port) {
+    struct sockaddr_in server_addr;
+    struct hostent *he;
+
+    if ((he = gethostbyname(host.c_str())) == nullptr) {
+        std::cerr << "gethostbyname() error" << std::endl;
+        return -1;
+    }
+
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(port);
+    std::memcpy(&server_addr.sin_addr, he->h_addr, he->h_length);
+
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        perror("socket");
+        return -1;
+    }
+
+    if (connect(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+        perror("connect");
+        close(sockfd);
+        return -1;
+    }
+
+    return sockfd;
+}
+
 int main(int argc, char **argv) {
     const char *defaultDnsSearch[] = {nullptr};
     int log_level = LOG_WARNING;
     int dump_flags = DUMP_NONE;
+    int in_fd = 0;
+    int out_fd = 1;
 
     SlirpConfig config = {
         .version = SLIRP_REQUIRED_VERSION,
@@ -137,6 +164,7 @@ int main(int argc, char **argv) {
         {"mfr-id", required_argument, nullptr, 13},
         {"oob-eth-addr", required_argument, nullptr, 14},
         {"quiet",no_argument, nullptr, 'q'},
+        {"reverse", required_argument, nullptr, 15},
         {"help", no_argument, nullptr, '?'},
         {0, 0, 0, 0}
     };
@@ -228,6 +256,23 @@ int main(int argc, char **argv) {
                     &config.oob_eth_addr[2], &config.oob_eth_addr[3],
                     &config.oob_eth_addr[4], &config.oob_eth_addr[5]);
                 break;
+            case 15: {
+                std::string reverse_arg(optarg);
+                size_t colon_pos = reverse_arg.find(':');
+                if (colon_pos == std::string::npos) {
+                    std::cerr << "Invalid --reverse argument format. Use host:port." << std::endl;
+                    return EXIT_FAILURE;
+                }
+                std::string host = reverse_arg.substr(0, colon_pos);
+                int port = std::stoi(reverse_arg.substr(colon_pos + 1));
+
+                in_fd = connect_to_host(host, port);
+                if (in_fd < 0) {
+                    return EXIT_FAILURE;
+                }
+                out_fd = in_fd; // Use the same socket for output
+                break;
+            }
             default:
                 std::cerr << "Invalid option. Use --help for usage information." << std::endl;
                 return EXIT_FAILURE;
@@ -238,7 +283,7 @@ int main(int argc, char **argv) {
     // std::cerr << "Dump mode set to " << dump_flags << std::endl;
 
     try {
-        SlirpWrapper wrapper(config, log_level, dump_flags);
+        SlirpWrapper wrapper(config, in_fd, out_fd, log_level, dump_flags);
         wrapper.run();
     } catch (const std::exception &e) {
         std::cerr << e.what() << std::endl;
