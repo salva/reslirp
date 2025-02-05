@@ -24,18 +24,20 @@ void notify_cb(void *opaque);
 void init_completed_cb(Slirp *slirp, void *opaque);
 int get_revents_cb(int idx, void *opaque);
 slirp_ssize_t write_stdout_cb(const void *buf, size_t len, void *opaque);
-
-SlirpWrapper::SlirpWrapper(const SlirpConfig &config, int log_level, int dump_flags) {
+SlirpWrapper::SlirpWrapper(const SlirpConfig &config, int in_fd, int out_fd, int log_level, int dump_flags) 
+    : in_fd(in_fd), out_fd(out_fd),
+      log_level(log_level),
+      dump_flags(dump_flags),
+      slirp(nullptr),
+      next_timer_id(0),
+      running(false) {
     log_info("Initializing reSLIRP.");
     slirp = slirp_new(&config, &callbacks, this);
     if (!slirp) {
         log_error("Failed to initialize Slirp.");
         throw std::runtime_error("Failed to initialize Slirp");
     }
-    this->log_level = log_level;
-    this->dump_flags = dump_flags;
 }
-
 SlirpWrapper::~SlirpWrapper() {
     log_info("Cleaning up reSLIRP.");
     if (slirp) {
@@ -80,14 +82,14 @@ void SlirpWrapper::run() {
         socket_map.clear();
         pollfds.clear();
 
-        // STDIN goes in the first position
-        pollfds.push_back({STDIN_FILENO, POLLIN, 0});
+        // Use in_fd for STDIN
+        pollfds.push_back({in_fd, POLLIN, 0});
 
         slirp_pollfds_fill_socket(slirp, &timeout, add_poll_socket_cb, this);
 
         log_debug("Polling for events, timeout set to " + std::to_string(timeout) + "ms.");
         int ret = poll(pollfds.data(), pollfds.size(), timeout);
-        log_debug("Polling completed. Return value: " + std::to_string(ret) + "ret: " + std::to_string(ret));
+        log_debug("Polling completed. Return value: " + std::to_string(ret));
 
         if (ret < 0) {
             log_debug("Error polling for events.");
@@ -96,10 +98,10 @@ void SlirpWrapper::run() {
             slirp_pollfds_poll(slirp, ret < 0, get_revents_cb, this);
 
             if (pollfds[0].revents & POLLIN) {
-                ssize_t n = read(STDIN_FILENO, pktin_buf + pktin_current, sizeof(pktin_buf) - pktin_current);
+                ssize_t n = read(in_fd, pktin_buf + pktin_current, sizeof(pktin_buf) - pktin_current);
 
                 if (n < 0) {
-                    log_debug("Error reading from STDIN.");
+                    log_debug("Error reading from input.");
                 }
                 else if (n == 0) {
                     log_error("Connection closed.");
@@ -107,7 +109,7 @@ void SlirpWrapper::run() {
                 }
                 else {
                     pktin_current += n;
-                    log_debug("Read " + std::to_string(n) + " bytes from STDIN, processing packet.");
+                    log_debug("Read " + std::to_string(n) + " bytes from input, processing packet.");
                     while (1) {
                         if (pktin_current < 2)
                             break;
@@ -120,7 +122,7 @@ void SlirpWrapper::run() {
                         }
                         if (pktin_current < pktin_len + 2)
                             break;
-                        log_debug("Packet read from STDIN, processing it, len: " + std::to_string(pktin_len));
+                        log_debug("Packet read from input, processing it, len: " + std::to_string(pktin_len));
                         dump_packet("Packet received", pktin_buf + 2, pktin_len, dump_flags);
                         slirp_input(slirp, pktin_buf + 2, pktin_len);
                         if (pktin_current > pktin_len + 2) {
@@ -305,14 +307,14 @@ slirp_ssize_t SlirpWrapper::write_stdout(const void *buf, size_t len) {
 slirp_ssize_t SlirpWrapper::write_stdout_all(const void *buf, size_t len) {
     size_t current = 0;
     while (current < len) {
-        slirp_ssize_t n = write(STDOUT_FILENO, ((const uint8_t *)buf) + current, len - current);
+        slirp_ssize_t n = write(out_fd, ((const uint8_t *)buf) + current, len - current);
         if (n < 0) {
             if (errno == EINTR) continue;
-            log_debug("Error writing to STDOUT: " + std::string(strerror(errno)));
+            log_debug("Error writing to output: " + std::string(strerror(errno)));
             sleep(1);
             continue;
         } else if (n == 0) {
-            log_debug("EOF on STDOUT.");
+            log_debug("EOF on output.");
             running = false;
             return 0;
         } else {

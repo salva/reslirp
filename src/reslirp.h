@@ -26,11 +26,13 @@ enum {
 
 class SlirpWrapper {
 public:
-    SlirpWrapper(const SlirpConfig &config, int debug_level = 0, int dump_flags = 0);
+    SlirpWrapper(const SlirpConfig &config, int in_fd=0, int out_fd=1, int debug_level=0, int dump_flags=0);
     ~SlirpWrapper();
     void run();
 
 private:
+    int in_fd;
+    int out_fd;
     int32_t log_level;
     uint32_t dump_flags;
     Slirp *slirp;
