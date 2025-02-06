@@ -338,8 +338,13 @@ SlirpCb SlirpWrapper::callbacks = {
     .timer_new = timer_new_cb,
     .timer_free = timer_free_cb,
     .timer_mod = timer_mod_cb,
+#if SLIRP_REQUIRE_VERSION > 5 
     .register_poll_fd = nullptr,
     .unregister_poll_fd = nullptr,
+#else
+    .register_poll_fd = register_poll_socket_cb,
+    .unregister_poll_fd = unregister_poll_socket_cb,
+#endif
     .notify = notify_cb,
     .init_completed = init_completed_cb,
     .timer_new_opaque = nullptr,
