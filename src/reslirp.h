@@ -31,6 +31,9 @@ public:
     void run();
 
 private:
+    // This two are just for debugging purposes:
+    const int INFO_SLIRP_REQUIRED_VERSION = SLIRP_REQUIRED_VERSION;
+    const int INFO_SLIRP_CONFIG_VERSION_MAX = SLIRP_CONFIG_VERSION_MAX;
     int in_fd;
     int out_fd;
     int32_t log_level;
