@@ -118,7 +118,7 @@ int main(int argc, char **argv) {
         .vprefix_addr6 = IN6ADDR_ANY_INIT,
         .vprefix_len = 0,
         .vhost6 = IN6ADDR_ANY_INIT,
-        .vhostname = "slirp",
+        .vhostname = "reslirp",
         .tftp_server_name = nullptr,
         .tftp_path = nullptr,
         .bootfile = nullptr,
