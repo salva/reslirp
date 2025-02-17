@@ -82,6 +82,9 @@ my $wix_structure =
 	[ Component => { Id => "CopyrightSlirp" },
 	  [ File => { Id => "CopyrightSlirpFile", Source => "COPYRIGHT.libslirp", Name => "COPYRIGHT_LIBSLIRP.txt" } ]
 	],
+        [ Component => { Id => "WinSshdSetup" },
+	  [ File => { Id => "WinSshdSetupFile", Source => "win-sshd-setup.ps1", Name => "win-sshd-setup.ps1" } ]
+	]
 	map [ Component => { Id => $_, Bitness => 'always64' },
 	      [ File => { Source => $win_deps{$_}, Id => $_, KeyPath => "yes" } ],
 	], keys(%win_deps)
@@ -92,6 +95,7 @@ my $wix_structure =
       [ ComponentRef => { Id => "Readme" } ],
       [ ComponentRef => { Id => "Copyright" } ],
       [ ComponentRef => { Id => "CopyrightSlirp" } ],
+      [ ComponentRef => { Id => "WinSshdSetup" } ],
       map [ ComponentRef => { Id => $_ }], keys(%win_deps)
     ],
   ]
