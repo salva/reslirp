@@ -90,32 +90,37 @@ if ($portCheck) {
     Write-Host "SSH is NOT listening on port 22. Check your firewall and service status." -ForegroundColor Red
 }
 
-# Ensure proper permissions for .ssh directory
-$sshDir = "$env:USERPROFILE\.ssh"
-if (!(Test-Path $sshDir)) {
-    try {
-        New-Item -ItemType Directory -Path $sshDir -Force | Out-Null
-    } catch {
-        Write-Host "Warning: Failed to create .ssh directory, but continuing." -ForegroundColor Yellow
-    }
-}
 
 # Ask user for SSH key
 $sshKey = Read-Host "Paste your SSH public key (leave blank to skip)"
 if ($sshKey -ne "") {
-    $keyFile = "$sshDir\authorized_keys"
+	$fullUserName = "$env:COMPUTERNAME\$env:USERNAME"
 
-    # Ensure the authorized_keys file exists before setting permissions
-    if (!(Test-Path $keyFile)) {
-        New-Item -ItemType File -Path $keyFile -Force | Out-Null
-    }
+	$isAdmin = @(Get-LocalGroupMember -Group 'Administrators' | Where-Object { $_.Name -eq $fullUserName }).Count -gt 0
+	if ($isAdmin) {
+		Add-Content -Path "${env:ProgramData}\ssh\administrators_authorized_keys" -Value $sshKey
+		Write-Host "SSH key added into ${env:ProgramData}\ssh\administrators_authorized_keys"
+	} else {
+		# Ensure proper permissions for .ssh directory
+		$sshDir = "$env:USERPROFILE\.ssh"
+		if (!(Test-Path $sshDir)) {
+			New-Item -ItemType Directory -Path $sshDir -Force | Out-Null
+		}
 
-    # Append the SSH key to the file before modifying permissions
-    Add-Content -Path $keyFile -Value $sshKey
-    Write-Host "SSH key saved successfully! Applying correct permissions..." -ForegroundColor Green
+		$keyFile = "$sshDir\authorized_keys"
 
-    # Set correct permissions after saving the key
-    icacls $sshDir /setowner "$env:USERNAME" /T
+		# Ensure the authorized_keys file exists before setting permissions
+		if (!(Test-Path $keyFile)) {
+			New-Item -ItemType File -Path $keyFile -Force | Out-Null
+		}
+
+		# Append the SSH key to the file before modifying permissions
+		Add-Content -Path $keyFile -Value $sshKey
+		Write-Host "SSH key saved successfully to $keyFile! Applying correct permissions..." -ForegroundColor Green
+
+		# Set correct permissions after saving the key
+		icacls $sshDir /setowner "$env:USERNAME" /T
+	}
 
     # Restart SSH service
     Restart-Service $sshService
