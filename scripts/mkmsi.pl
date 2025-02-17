@@ -84,7 +84,7 @@ my $wix_structure =
 	],
         [ Component => { Id => "WinSshdSetup" },
 	  [ File => { Id => "WinSshdSetupFile", Source => "win-sshd-setup.ps1", Name => "win-sshd-setup.ps1" } ]
-	]
+	],
 	map [ Component => { Id => $_, Bitness => 'always64' },
 	      [ File => { Source => $win_deps{$_}, Id => $_, KeyPath => "yes" } ],
 	], keys(%win_deps)
