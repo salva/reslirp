@@ -87,7 +87,7 @@ my $wix_structure =
 	],
 	map [ Component => { Id => $_, Bitness => 'always64' },
 	      [ File => { Source => $win_deps{$_}, Id => $_, KeyPath => "yes" } ],
-	], keys(%win_deps)
+            ], keys(%win_deps)
       ]
     ],
     [ Feature => {Id => "reSLIRPFeature"},
